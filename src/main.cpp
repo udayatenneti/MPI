@@ -1,98 +1,208 @@
+/* input/output */
 #include <iostream>
-#include <argparse.h>
-#include <threads.h>
-#include <io.h>
-#include <chrono>
-#include <cstring>
-#include <pthread.h>
-#include <math.h>
-#include <atomic>
 
-using namespace std;
+/* math */
+#include <cmath>
+
+/* srand */
+#include <stdlib.h>
+
+/* STL types */
+#include <vector>
+#include <array>
+
+/* MPI library */
+#include <mpi.h>
+
+/* Custom MPI structs */
+#include "misc/mpi_types.h"
+
+/* Body class */
+#include "misc/body.h"
+
+/* Reading and writing */
+#include "misc/readwrite.h"
+
+/* Tree building */
+#include "tree/orb.h"
+#include "tree/tree.h"
+#include "tree/build_tree.h"
+
+/* Input parsing */
+#include "misc/inputparser.h"
+
+/* Body generator */
+#include "misc/gen_bodies.h"
 
 
+int main(int argc, char * argv[]){
+    
+    int size, rank, tmax, N, nbodies;
+    std::vector<Body> bodies;
+    std::vector<pair<double, int> > splits;
+    vector<pair<array<double, 3>, array<double, 3> > > bounds, other_bounds; 
+    vector<pair<int, bool> > partners;
+    vector<double> comp_time;
+    double dt, min[3], max[3];
+    double start_time, stop_time;
+    InputParser ip;
+    bool overwrite;
+    
+    /* Initialize MPI */
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-int main(int argc, char **argv)
-{
-    // Parse args
-    struct options_t opts;
-    get_opts(argc, argv, &opts);
-
-    //printf("spin: %d\n", opts.spin);
-    bool sequential = false;
-    if (opts.n_threads == 0) {
-        opts.n_threads = 1;
-        sequential = true;
+    /* Number of processes must be a power of 2 */
+    if(fmod(log2(size), 1) != 0){
+        if(rank == 0){
+            std::cerr << "Error: Number of processes must be a power of 2!" << std::endl;
+        }
+        MPI_Finalize();
+        return -1;
     }
 
-    // Setup threads
-    pthread_t *threads = sequential ? NULL : alloc_threads(opts.n_threads);
 
-
-    // Setup args & read input data
-    prefix_sum_args_t *ps_args = alloc_args(opts.n_threads);
-    int n_vals;
-    int *input_vals, *output_vals;
-    bool pad_with_zeroes;
-
-    read_file(&opts, &n_vals, &input_vals, &output_vals, &pad_with_zeroes, &sequential);
-    int next_power = n_vals;
-    if(pad_with_zeroes){
-        //printf("came here wrong 3!\n");
-        next_power = next_power_of_two_or_equal(n_vals);
+    if(!ip.parse(argc, argv)){
+        if(rank == 0){
+            std::cout << "Error: Invalid command line input" << std::endl;
+            print_usage(argc, argv);
+        }
+        return -1; 
     }
-    //printf("next_power %d n_vals %d\n", next_power, n_vals);
 
-    //"op" is the operator you have to use, but you can use "add" to test
-    int (*scan_operator)(int, int, int);
-    scan_operator = op;
-    //scan_operator = add;
+    /* Initialize custom MPI structures */
+    init_mpi_types();
 
-    pthread_barrier_t   barrier; // the barrier synchronization object
-    pthread_barrier_init(&barrier, NULL, opts.n_threads);  
-    int level = log2 (next_power); //padded with zeroes potentially
-    std::atomic<int>* go_arr = alloc_barrier_arr(opts.n_threads);
-    std::atomic<int> global_counter = 0;
-    //TODO: STEP2: Once work at level is complete, replace level-arg with level-1, work-at-level-1 
+    if(ip.read_bodies()){
+        /* Read bodies from file */
+        auto p = read_bodies(ip.in_file().c_str(), MPI_COMM_WORLD);
+        bodies = p.first;
+        N = p.second;
+    }
+    else{
+        N = ip.n_bodies();
+        nbodies = ip.n_bodies() / size;
+        if (rank <= ip.n_bodies() % size - 1){
+            nbodies++;
+        }
+        double lim = (double) 10 * N;
+        bodies = generate_bodies(nbodies, {{-lim, -lim, -lim}}, {{lim, lim, lim}}, rank);
+    }
 
-    fill_args(ps_args, opts.n_threads, n_vals, input_vals, output_vals,
-        opts.spin, scan_operator, opts.n_loops, level, &barrier, &global_counter, go_arr, pad_with_zeroes, next_power);
+    /* Write initial positions to file */
+    overwrite = true;
+    if(ip.write_positions()){
+        write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, overwrite);
+    }
 
-    // Start timer
-    auto start = std::chrono::high_resolution_clock::now();
+    
+    tmax = ip.n_steps(); // number of time steps
+    dt = ip.time_step(); // time step
+    
+    if(ip.clock_run()){
+        MPI_Barrier(MPI_COMM_WORLD);
+        start_time = MPI_Wtime();
+    }
 
-    if (sequential)  {
-        //sequential prefix scan
-        output_vals[0] = input_vals[0];
-        for (int i = 1; i < n_vals; ++i) {
-            //y_i = y_{i-1}  <op>  x_i
-            output_vals[i] = scan_operator(output_vals[i-1], input_vals[i], ps_args->n_loops);
+    for(int t = 0; t < tmax; t++){
+
+        /* Reset variables */
+        bounds.clear();
+        other_bounds.clear();
+        partners.clear();
+        
+        /* Domain composition and transfer of bodies */
+        global_minmax(bodies, min, max);
+        orb(bodies, bounds, other_bounds, partners, min, max, rank, size);
+
+        
+        /* Build the local tree */
+        Tree tree(min, max, ip.bh_approx_constant());
+        build_tree(bodies, bounds, other_bounds, partners, tree, rank);
+
+        /* Compute forces */
+        std::vector<array<double, 3> > forces;
+        for(Body & b : bodies){
+            /* time the computation */
+            double start_time = MPI_Wtime();
+            array<double, 3> f = tree.compute_force(&b);
+            /* update the workload for the body */
+            b.work = MPI_Wtime() - start_time;
+            forces.push_back(f);
+        }
+        
+        /* Update positions */
+        for (int i = 0; i < bodies.size(); i++) {
+            Body & b = bodies[i];
+            for(int c = 0; c < 3; c++){
+                b.vel[c] = b.vel[c] + forces[i][c] * dt / b.m;
+                b.pos[c] = b.pos[c] + b.vel[c] * dt;
+            }
+        }
+        
+        /* Output */
+        /* Print time step to stdout */
+        if(rank == 0 and ip.verbose()){
+            std::cout << "\rTime step: " << t + 1 << "/" << tmax;
+            if(t == tmax - 1){
+                std::cout << std::endl;
+            }
+        }
+
+        if(ip.sampling_interval() == 1 or (t % ip.sampling_interval() == 0 and t != 0)){
+
+            /* Stop the time */
+            if(ip.clock_run()){
+                MPI_Barrier(MPI_COMM_WORLD);
+                stop_time = MPI_Wtime(); 
+            }
+
+            /* Write tree */
+            if(rank == 0 and ip.write_tree()){
+                write_tree(ip.out_tree_file().c_str(), tree, true, overwrite);
+            }
+            
+            /* Write tree size*/
+            if(rank == 0 and ip.write_tree_size()){
+                write_to_file(ip.out_tree_size_file().c_str(), tree.size(), overwrite);
+            }
+
+            /* Write positions */
+            if(ip.write_positions()){
+                write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, false);
+            }
+
+            /* Write running time */
+            if(ip.clock_run()){
+                if(rank == 0){
+                    write_to_file(ip.out_time_file().c_str(), stop_time - start_time, overwrite);
+                }
+                
+            }
+
+            if(overwrite){
+                overwrite = false;
+            }
+
+            if(ip.clock_run()){
+                // start the time
+                MPI_Barrier(MPI_COMM_WORLD);
+                start_time = MPI_Wtime();        
+            }
         }
     }
-    else {
-        int last_value = input_vals[n_vals-1];
-        start_threads(threads, opts.n_threads, ps_args, compute_prefix_sum);
 
-        // Wait for threads to finish
-        join_threads(threads, opts.n_threads);
-        for (int i = 0; i < n_vals - 1; ++i) {
-            //y_i = y_{i-1}  <op>  x_i
-            output_vals[i] = input_vals[i+1];
+    /* Finalize */
+    free_mpi_types();
+    MPI_Finalize();
+   
+    if(ip.write_summary()){
+        if(rank == 0){
+            write_summary(ip, N, size);
         }
-        output_vals[n_vals -1] = output_vals[n_vals - 2] + last_value;
     }
+    
 
-    //End timer and print out elapsed
-    auto end = std::chrono::high_resolution_clock::now();
-    auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    //printf("no of threads: %d\n", opts.n_threads);
-    std::cout << "time: " << diff.count() << std::endl;
-
-    // Write output data
-    write_file(&opts, &(ps_args[0]));
-
-    // Free other buffers
-    free(threads);
-    free(ps_args);
-    pthread_barrier_destroy(&barrier);
 }
+
