@@ -10,4 +10,6 @@ double bisection(double a, double b, std::function<double (double)> f, double to
 
 double dist_aabb(const double * a_min, const double * a_max, const double * b_min, const double * b_max);
 
+double dist_rm(const double * cell_rm, const double * body_pos);
+
 #endif // _UTILS_H_N_BODY_

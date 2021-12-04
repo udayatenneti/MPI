@@ -7,6 +7,6 @@
 #include <array>
 #include "body.h"
 
-std::vector<Body> generate_bodies(int n, std::array<double, 3> min, std::array<double, 3> max, int rank);
+std::vector<Body> generate_bodies(int n, std::array<double, 2> min, std::array<double, 2> max, int rank);
 
 #endif // _GEN_BODIES_H_NBODY_

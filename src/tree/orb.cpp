@@ -32,10 +32,10 @@ int get_partner(int rank, int n_processes){
     return partner; 
 }
 
-int split_coord(const array<double, 3> & min, const array<double, 3> & max){
+int split_coord(const array<double, 2> & min, const array<double, 2> & max){
     double max_diff = -1;
     int coord;
-    for(int c = 0; c < 3; c++){
+    for(int c = 0; c < 2; c++){
         // split along maximum dimension
         if(max[c] - min[c] > max_diff){
             coord = c;
@@ -85,11 +85,11 @@ void orb(vector<Body> & bodies, bound_vec & bounds,
     function<double (double)> f;
     MPI_Status status;
     MPI_Comm subset_comm;
-    array<double, 3> min_bounds, max_bounds, min, max, other_min, other_max;
+    array<double, 2> min_bounds, max_bounds, min, max, other_min, other_max;
 
     /* Copy over global min and max */
-    std::copy(global_min, &global_min[3], std::begin(min));  
-    std::copy(global_max, &global_max[3], std::begin(max));  
+    std::copy(global_min, &global_min[2], std::begin(min));  
+    std::copy(global_max, &global_max[2], std::begin(max));  
 
     /* ORB */
     color = 0;
@@ -152,7 +152,7 @@ void orb(vector<Body> & bodies, bound_vec & bounds,
         other_side.clear();
         this_side.clear();
         for (Body b : bodies){
-            if ((b.pos[coord] - split > 0) == above){
+            if ((b.pos[coord] - split > 0) == above){ //partition my bodies
                 this_side.push_back(b);
             }
             else{
@@ -204,12 +204,13 @@ void orb(vector<Body> & bodies, bound_vec & bounds,
 void global_minmax(const vector<Body> bodies, double * min, double * max){
 
     /* Initialize bounds to infinity */
-    min[0] = min[1] = min[2] = std::numeric_limits<double>::infinity();
-    max[0] = max[1] = max[2] = -std::numeric_limits<double>::infinity();
+    //min[0] = min[1] = std::numeric_limits<double>::infinity();
+    //max[0] = max[1] = -std::numeric_limits<double>::infinity();
     
     /* Find local min and max bounds */
-    for(const Body & b : bodies){
-        for(int c = 0; c < 3; c++){
+    
+    /*for(const Body & b : bodies){
+        for(int c = 0; c < 2; c++){
             if(b.pos[c] < min[c]){
                 min[c] = b.pos[c];
             }
@@ -217,15 +218,15 @@ void global_minmax(const vector<Body> bodies, double * min, double * max){
                 max[c] = b.pos[c];
             }
         }
-    }
+    }*/
     
     /* Find global min and max bounds */
-    for(int c = 0; c < 3; c++){
-        double global_min;
-        double global_max;
-        MPI_Allreduce(&min[c], &global_min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-        MPI_Allreduce(&max[c], &global_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-        min[c] = global_min;
-        max[c] = global_max;
+    for(int c = 0; c < 2; c++){
+        //double global_min;
+        //double global_max;
+        //MPI_Allreduce(&min[c], &global_min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+        //MPI_Allreduce(&max[c], &global_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        min[c] = 0;
+        max[c] = 4;
     }
 }

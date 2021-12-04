@@ -5,7 +5,7 @@
 
 bool InputParser::parse(int argc, char** argv){
 
-    static const char * opt_string = "N:s:t:a:G:f:vo:i:T:R:r:q:";
+    static const char * opt_string = "N:s:a:d:t:G:vi:o:T:R:r:q:";
     int in;
 
     opterr = 0;
@@ -18,16 +18,19 @@ bool InputParser::parse(int argc, char** argv){
                 case 's':
                     steps = std::stoi(optarg);
                     break;
-                case 't':
+                case 'a':
+                    si = std::stoi(optarg);
+                    break;    
+                case 'd':
                     dt = std::stod(optarg);
                     break;
-                case 'a':
+                case 't':
                     theta = std::stod(optarg);
                     break;
                 case 'G':
                     g = std::stod(optarg);
                     break;
-                case 'f':
+                case 'i':
                     readfile = true;
                     in_fn = optarg;
                     break;
@@ -38,9 +41,7 @@ bool InputParser::parse(int argc, char** argv){
                 case 'v':
                     verb = true;
                     break;
-                case 'i':
-                    si = std::stoi(optarg);
-                    break;
+                
                 case 'T':
                     out_time_fn = optarg;
                     clock = true;

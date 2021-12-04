@@ -16,12 +16,13 @@ bool file_exists(const std::string& filename)
     return false;
 }
 
-std::pair<std::vector<Body>, int> read_bodies(const char * filename, MPI_Comm comm){
+std::pair<std::vector<Body>, std::pair<std::vector<Body>, int>> read_bodies(const char * filename, MPI_Comm comm){
     int rank, size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     std::vector<Body> bodies;
+    std::vector<Body> allbodies;
     /* Read bodies from file */
     if(rank != 0){
         MPI_Status status;
@@ -34,14 +35,23 @@ std::pair<std::vector<Body>, int> read_bodies(const char * filename, MPI_Comm co
     infile.open(filename);
 
     std::string line;
-    int i = 0;
+    int i = -1;
+    int total;
     while (std::getline(infile, line)){
         std::istringstream iss(line);
         double x, y, z, vx, vy, vz, m;
-        if (!(iss >> x >> y >> z >> vx >> vy >> vz >> m)) { break; } // error
-        if((i % size) == rank){
-            bodies.push_back(Body{{x, y, z}, {vx, vy, vz}, m, 1});
+        
+        int num;
+        if(i==-1){
+            if(!(iss >> total)){ break;}
+            i = 0;
+            continue;
         }
+        if (!(iss >> num >> x >> y >> m >> vx >> vy)) { break; } // error
+        if((i % size) == rank){
+            bodies.push_back(Body{{x, y}, {vx, vy}, m, 1, num});
+        }
+        allbodies.push_back(Body{{x, y}, {vx, vy}, m, 1, num});
         i++;
     }
     infile.close();
@@ -50,8 +60,8 @@ std::pair<std::vector<Body>, int> read_bodies(const char * filename, MPI_Comm co
         int x = 1;
         MPI_Send(&x, 1, MPI_INT, rank + 1, 0, MPI_COMM_WORLD);
     }
-
-    return std::make_pair(bodies, i);
+    std::pair<std::vector<Body>, int> wholeLayer = std::make_pair(allbodies, total);
+    return std::make_pair(bodies, wholeLayer);
 }
 
 void write_bodies(const char * filename, const std::vector<Body> & bodies, MPI_Comm comm, bool overwrite){
@@ -76,7 +86,7 @@ void write_bodies(const char * filename, const std::vector<Body> & bodies, MPI_C
     }
 
     for(const Body & b : bodies){
-        myfile << b.pos[0] << " " << b.pos[1] << " " << b.pos[2] << std::endl;
+        myfile << b.idx << " " << b.pos[0] << " " << b.pos[1] << " " << b.m << " " << b.vel[0] << " " << b.vel[1] << std::endl;
     }
 
     if(rank != size - 1){

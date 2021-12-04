@@ -12,6 +12,18 @@ using std::copy; using std::fill;
 using std::begin; using std::end;
 
 
+
+void build_simple_tree(const vector<Body > & bodies, Tree & tree, int rank){
+
+    /* insert bodies residing on this process */
+    for(const Body & b : bodies){
+        if (b.m != -1){
+            tree.insert_body(&b);
+        }
+    }               
+}
+
+
 void build_tree(const vector<Body > & bodies, const bound_vec & bounds, const bound_vec & other_bounds,
                 const vector<pair<int, bool> > & partners, Tree & tree, int rank){
 
@@ -88,7 +100,7 @@ void build_tree(const vector<Body > & bodies, const bound_vec & bounds, const bo
         /* prune the tree so as to remove subtrees not needed for evaluating the force
            on each body residing on this process */
         // Must prune tree after inserting since we always send at least one cell
-        tree.prune_tree(&bound.first[0], &bound.second[0]);
+        //tree.prune_tree(&bound.first[0], &bound.second[0]);
     }
 }
 
@@ -104,14 +116,14 @@ vector<Cell *> construct_received_trees(const vector<MPICell> & recv_cells){
         copy(begin(mpicell.min_bounds), end(mpicell.min_bounds), begin(cell->min_bounds));         
         copy(begin(mpicell.max_bounds), end(mpicell.max_bounds), begin(cell->max_bounds));         
         copy(begin(mpicell.rm), end(mpicell.rm), begin(cell->rm));         
-        fill(cell->subcells, &cell->subcells[8], nullptr);
+        fill(cell->subcells, &cell->subcells[4], nullptr);
 
         if(mpicell.parent_idx == -1){
             root_cells.push_back(cell);
         }
         else{
             Cell * parent = all_cells.at(mpicell.parent_idx);
-            for(int i = 0; i < 8; i++){
+            for(int i = 0; i < 4; i++){
                 if(parent->subcells[i] == nullptr){
                     parent->subcells[i] = cell; 
                     break;

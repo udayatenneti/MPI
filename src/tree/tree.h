@@ -10,11 +10,11 @@
 using std::vector; using std::array;
 
 struct Cell {
-    double min_bounds[3];
-    double max_bounds[3];
+    double min_bounds[2];
+    double max_bounds[2];
     double m = 0;   // mass 
-    double rm[3]; // center of mass
-    Cell * subcells[8]; // eight subcells maximum
+    double rm[2]; // center of mass
+    Cell * subcells[4]; // eight subcells maximum
     bool inserted = false;
     const Body * b = nullptr;
     bool send_as_leaf = false;
@@ -30,7 +30,7 @@ public:
     @param min_bounds : minimum bounds of root cell
     @param max_bounds : maximum bounds of root cell
     */
-    Tree(const double * min_bounds, const double * max_bounds, double theta);
+    Tree(const double * min_bounds, const double * max_bounds, double theta, int rank);
 
     /*
     deletes the tree
@@ -96,7 +96,7 @@ public:
     @param pos : position of body
     @param m : mass of body
     */
-    array<double, 3> compute_force(const Body * b);
+    array<double, 2> compute_force(const Body * b);
 
     /*
     constructs string representation of tree
@@ -170,6 +170,15 @@ private:
     */
     bool opening_criterion(const Cell * cell, const double * min_bounds, const double * max_bounds);
 
+    /*
+    MAC for a cell
+
+    @param cell : cell to open or not
+    @param min_bounds : minimum bounds of comparing domain
+    @param max_bounds : maximum bounds of copmaring domain
+    */
+    bool mac(const Cell * cell, const double * pos);
+
 
     /*
     Traverse tree and find cells to send
@@ -212,7 +221,7 @@ private:
     @param pos : position of body
     @param m : mass of body
     */
-    array<double, 3> compute_force(const Cell * cell, const Body * b);
+    array<double, 2> compute_force(const Cell * cell, const Body * b);
 
     /*
     Constructs string representation of subtree

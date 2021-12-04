@@ -10,7 +10,7 @@
 #include "inputparser.h"
 
 
-std::pair<std::vector<Body>, int> read_bodies(const char * filename, MPI_Comm comm);
+std::pair<std::vector<Body>, std::pair<std::vector<Body>, int>> read_bodies(const char * filename, MPI_Comm comm);
 
 void write_bodies(const char * filename, const std::vector<Body> & bodies, MPI_Comm comm, bool overwrite);
 

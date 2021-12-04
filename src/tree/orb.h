@@ -14,7 +14,7 @@
 using std::vector; using std::pair;
 using std::array; using std::string;
 
-typedef vector<pair<array<double, 3>, array<double, 3> > > bound_vec;
+typedef vector<pair<array<double, 2>, array<double, 2> > > bound_vec;
 
 
 /*
@@ -40,7 +40,7 @@ Determines which coordinate to split.
 @param min : min bounds
 @param max : max bounds
 */
-int split_coord(const array<double, 3> & min, const array<double, 3> & max);
+int split_coord(const array<double, 2> & min, const array<double, 2> & max);
 
 
 /*

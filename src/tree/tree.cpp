@@ -16,16 +16,16 @@ using std::array;
 
 
 
-Tree::Tree(const double * min_bounds, const double * max_bounds, double theta){
+Tree::Tree(const double * min_bounds, const double * max_bounds, double theta, int rank){
     /* parameter for opening criterion */
     m_theta = theta;
 
     /* create root cell */
     root = new Cell();
-    copy(min_bounds, &min_bounds[3], root->min_bounds);
-    copy(max_bounds, &max_bounds[3], root->max_bounds);
+    copy(min_bounds, &min_bounds[2], root->min_bounds);
+    copy(max_bounds, &max_bounds[2], root->max_bounds);
     root->m = 0;
-    fill(root->subcells, &root->subcells[8], nullptr);
+    fill(root->subcells, &root->subcells[4], nullptr);
 }
 
 Tree::~Tree(){
@@ -34,7 +34,7 @@ Tree::~Tree(){
 
 void Tree::delete_subtree(Cell * cell){
     /* delete subcells first */
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 4; i++){
         if(cell->subcells[i] != nullptr){
             delete_subtree(cell->subcells[i]);
         }
@@ -59,14 +59,14 @@ void Tree::insert_body(Cell * cell, const Body * b){
         /* if cell already contains a body, but is not split */
         if(cell->subcells[0] == nullptr){   
             /* split the cell  */
-            for(int i = 0; i < 8; i++){
+            for(int i = 0; i < 4; i++){
                 /* create subcell */
                 Cell * subcell = new Cell();
 
                 subcell->m = 0;
 
                 /* find min and max bounds of cell */
-                for(int c = 0; c < 3; c++){
+                for(int c = 0; c < 2; c++){
                     double half_side = (cell->max_bounds[c] - cell->min_bounds[c]) / 2;
                     int shift = ((i >> c) & 1);
                     subcell->min_bounds[c] = cell->min_bounds[c] + shift * half_side;
@@ -85,7 +85,7 @@ void Tree::insert_body(Cell * cell, const Body * b){
         }
 
         /* insert new body into subcell */
-        for(int i = 0; i < 8; i++){
+        for(int i = 0; i < 4; i++){
             if(cell->subcells[i] != nullptr and coord_in_cell(cell->subcells[i], b->pos)){
                 insert_body(cell->subcells[i], b);
                 break;
@@ -93,7 +93,7 @@ void Tree::insert_body(Cell * cell, const Body * b){
         }
 
         /* update mass and center of mass for cell */
-        for(int c = 0; c < 3; c++){
+        for(int c = 0; c < 2; c++){
             cell->rm[c] = (cell->m * cell->rm[c] + b->m * b->pos[c]) / (cell->m + b->m);
         }
         cell->m += b->m;
@@ -106,7 +106,7 @@ void Tree::insert_emptycell(const double * min_bounds, const double * max_bounds
 
 void Tree::insert_emptycell(Cell * cell, const double * min_bounds, const double * max_bounds){
     /* loop through subcells */
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 4; i++){
         /* if bounds in subcell, recursively insert */
         if(cell->subcells[i] != nullptr and bounds_in_cell(cell->subcells[i], min_bounds, max_bounds)){
             insert_emptycell(cell->subcells[i], min_bounds, max_bounds); 
@@ -115,10 +115,10 @@ void Tree::insert_emptycell(Cell * cell, const double * min_bounds, const double
         /* if bounds does not fit in subcell, create a new one */
         else if(cell->subcells[i] == nullptr){
             Cell * subcell = new Cell();
-            copy(min_bounds, &min_bounds[3], subcell->min_bounds);
-            copy(max_bounds, &max_bounds[3], subcell->max_bounds);
+            copy(min_bounds, &min_bounds[2], subcell->min_bounds);
+            copy(max_bounds, &max_bounds[2], subcell->max_bounds);
             subcell->m = 0;
-            fill(subcell->subcells, &subcell->subcells[8], nullptr);
+            fill(subcell->subcells, &subcell->subcells[4], nullptr);
             cell->subcells[i] = subcell;
             return;
         }
@@ -134,14 +134,14 @@ void Tree::insert_cell(Cell * cell, Cell * cell_to_insert){
 
     /* update mass and center of mass */
     if(cell->m != 0 or cell_to_insert->m != 0){
-        for(int c = 0; c < 3; c++){
+        for(int c = 0; c < 2; c++){
             cell->rm[c] = (cell->m * cell->rm[c] + cell_to_insert->m * cell_to_insert->rm[c]) / (cell->m + cell_to_insert->m);
         }
         cell->m += cell_to_insert->m;
     }
 
     /* insert cell in subcell */
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 4; i++){
         /* if bounds fit in cell */
         if(cell->subcells[i] != nullptr and bounds_in_cell(cell->subcells[i], 
                                                 cell_to_insert->min_bounds, cell_to_insert->max_bounds)){
@@ -169,7 +169,7 @@ void Tree::insert_cell(Cell * cell,
     if(same_cell(cell, min_bounds, max_bounds)){
         /* update mass and center of mass */
         if(cell->m != 0 or m != 0){
-            for(int c = 0; c < 3; c++){
+            for(int c = 0; c < 2; c++){
                 cell->rm[c] = (cell->m * cell->rm[c] + m * rm[c]) / (cell->m + m);
             }
             cell->m += m;
@@ -178,7 +178,7 @@ void Tree::insert_cell(Cell * cell,
     }
  
     /* otherwise, insert cell in subcell */
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 4; i++){
         /* if bounds fit in cell */
         if(cell->subcells[i] != nullptr and bounds_in_cell(cell->subcells[i], min_bounds, max_bounds)){
             /* recursively insert */
@@ -188,11 +188,11 @@ void Tree::insert_cell(Cell * cell,
         /* if bounds does not fit in subcell, create a new one */
         else if(cell->subcells[i] == nullptr){
             Cell * subcell = new Cell();
-            copy(min_bounds, &min_bounds[3], subcell->min_bounds);
-            copy(max_bounds, &max_bounds[3], subcell->max_bounds);
-            copy(rm, &rm[3], subcell->rm);
+            copy(min_bounds, &min_bounds[2], subcell->min_bounds);
+            copy(max_bounds, &max_bounds[2], subcell->max_bounds);
+            copy(rm, &rm[2], subcell->rm);
             subcell->m = m;
-            fill(subcell->subcells, &subcell->subcells[8], nullptr);
+            fill(subcell->subcells, &subcell->subcells[4], nullptr);
             subcell->inserted=true;
             cell->subcells[i] = subcell;
             return;
@@ -214,7 +214,7 @@ string Tree::subtree_str(Cell * cell, bool fulltree) const{
     
     int count = 0;
     if(!fulltree){
-        for(count = 0; count < 8; count++){
+        for(count = 0; count < 4; count++){
             if(cell->subcells[count] == nullptr){
                 break;
             }
@@ -224,7 +224,7 @@ string Tree::subtree_str(Cell * cell, bool fulltree) const{
     /* if not leaf */
     if(cell->subcells[0] != nullptr and (fulltree or count <= 2)){
         /* call function for each subcell */
-        for(int i = 0; i < 8; i++){
+        for(int i = 0; i < 4; i++){
             if(cell->subcells[i] != nullptr){
                 sstream << subtree_str(cell->subcells[i], fulltree);
             }
@@ -240,7 +240,7 @@ string Tree::subtree_str(Cell * cell, bool fulltree) const{
         //    sstream << std::endl;
         //}
         /* output cell boundaries */
-        for(int c = 0; c < 3; c++){
+        for(int c = 0; c < 2; c++){
             sstream << cell->min_bounds[c] << " " << cell->max_bounds[c] << " ";
         }
         sstream << std::endl;
@@ -260,16 +260,18 @@ bool Tree::opening_criterion(const Cell * cell, const double * min_bounds, const
     double d2 = dist_aabb(cell->min_bounds, cell->max_bounds, min_bounds, max_bounds);
 
     /* squared volume of cell */
-    double v2 = pow(cell_volume(cell),0.333*2);
-
+    //double v2 = pow(cell_volume(cell),0.333*2);
+    double v2 = cell_volume(cell);
     /* opening criterion rule */
     if(m_theta * m_theta * d2 < v2){
-        return true;
+        return true; //true for sending away i.e. cell close to split boundary
     }
     else{
         return false;
     }
 }
+
+
 
 void Tree::cells_to_send(const double * min_bounds, const double * max_bounds,
                     int min_depth, vector<Cell*> & cells){
@@ -292,7 +294,7 @@ void Tree::cells_to_send(Cell * cell, Cell * parent, const double * min_bounds, 
     
     /* if subtree of cell is needed by domain, we open it */
     if(opening_criterion(cell, min_bounds, max_bounds)){
-        for(int i = 0; i < 8; i++){
+        for(int i = 0; i < 4; i++){
             if(cell->subcells[i] != nullptr){
                 /* send subcells */
                 cells_to_send(cell->subcells[i], cell,  min_bounds, max_bounds, min_depth, depth + 1, cells);
@@ -306,7 +308,7 @@ void Tree::cells_to_send(Cell * cell, Cell * parent, const double * min_bounds, 
     
 void Tree::delete_descendants(Cell * cell){
     /* delete subcells */
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 4; i++){
         if(cell->subcells[i] != nullptr){
             delete_subtree(cell->subcells[i]);
             cell->subcells[i] = nullptr;
@@ -327,7 +329,7 @@ void Tree::prune_tree(Cell * cell, const double * min_bounds, const double * max
         }
         /* else call prune recursively */
         else{
-            for(int i = 0; i < 8; i++){
+            for(int i = 0; i < 4; i++){
                 if(cell->subcells[i] != nullptr){
                     prune_tree(cell->subcells[i], min_bounds, max_bounds);
                 }
@@ -336,33 +338,52 @@ void Tree::prune_tree(Cell * cell, const double * min_bounds, const double * max
     }
 }
 
-array<double, 3> Tree::compute_force(const Body * b){
+bool Tree::mac(const Cell * cell, const double * pos){
+    /* minimum squared distance between cell and domain */
+    double d = dist_rm(cell->rm, pos);
+
+    /* squared volume of cell */
+    //double v2 = pow(cell_volume(cell),0.333*2);
+    double l = (double) (cell->max_bounds[0] - cell->max_bounds[1]);
+    /* opening criterion rule */
+    if( (l / d) < m_theta){
+        return true; //divide into subcells
+    }
+    else{
+        return false; //calculate force from center of mass
+    }
+}
+
+array<double, 2> Tree::compute_force(const Body * b){
     return compute_force(root, b);
 }
 
-array<double, 3> Tree::compute_force(const Cell * cell, const Body * b){
+array<double, 2> Tree::compute_force(const Cell * cell, const Body * b){
 
     /* if cell is non empty and we dont want to open it or it is leaf cell */
-    if(cell->m != 0 and (!opening_criterion(cell, b->pos, b->pos) or cell->subcells[0] == nullptr)){
-        if(cell->b != b){
+    if((cell->m > 0) and (cell->subcells[0] == nullptr) and (cell->b != nullptr)){
+        if(cell->b->idx != b->idx){
             /* evaluate force */
-            return eval_force(cell->rm, cell->m, b->pos, b->m);
+            return eval_force_simple(cell->rm, cell->m, b->pos, b->m); //rm should be same as body pos!
         }
         /* is this really needed? */
         else{
-            return {{0, 0, 0}};
+            return {{0, 0}}; //same as
         }
+    } else if((cell->m > 0) and (cell->b != nullptr) and (cell->subcells[0] != nullptr) and !mac(cell, b->pos)){
+        //force is calculated using
+        return eval_force_simple(cell->rm, cell->m, b->pos, b->m);
     }
 
     /* accumulate force evaluation from subcells */
-    array<double, 3> ftot = {{0, 0, 0}};
-    for(int i = 0; i < 8; i++){
+    array<double, 2> ftot = {{0, 0}};
+    for(int i = 0; i < 4; i++){
         if(cell->subcells[i]!=nullptr){
             /* call force computation recursively */
-            array<double, 3> f = compute_force(cell->subcells[i], b);
+            array<double, 2> f = compute_force(cell->subcells[i], b);
 
             /* accumulate */
-            for(int c = 0; c < 3; c++){
+            for(int c = 0; c < 2; c++){
                 ftot[c] += f[c];
             }
         }
@@ -384,7 +405,7 @@ int Tree::size(bool complete_tree){
 int Tree::size(Cell * c, bool complete_tree){
     int s = 0;
     int i;
-    for(i = 0; i < 8; i++){
+    for(i = 0; i < 4; i++){
         if(c->subcells[i] != nullptr){
             s += size(c->subcells[i], complete_tree);
         }
@@ -392,10 +413,14 @@ int Tree::size(Cell * c, bool complete_tree){
             break;
         }
     }
-    if(i == 0 and c->m != 0){
+    if(i == 0){
         return 1;
     }
+    /*if(i == 0 and c->m != 0){
+        return 1;
+    }*/
     else{
+        std::cout << "\rHit incorrectly " << "/" << std::endl;;
         if(complete_tree){
             s++;
         }
@@ -403,8 +428,11 @@ int Tree::size(Cell * c, bool complete_tree){
     }
 }
 
+
+
+
 bool coord_in_cell(Cell * cell, const double * pos){
-    for(int c = 0; c < 3; c++){
+    for(int c = 0; c < 2; c++){
         /* if coordinate does not lie in cell boundary */
         if(pos[c] < cell->min_bounds[c] or pos[c] > cell->max_bounds[c]){
             return false;
@@ -414,7 +442,7 @@ bool coord_in_cell(Cell * cell, const double * pos){
 }
 
 bool same_cell(Cell * cell, const double * min_bounds, const double * max_bounds){
-    for(int c = 0; c < 3; c++){
+    for(int c = 0; c < 2; c++){
         /* if coordinate boundaries or not same */
         if(min_bounds[c] != cell->min_bounds[c] or max_bounds[c] != cell->max_bounds[c]){
             return false;
@@ -426,7 +454,7 @@ bool same_cell(Cell * cell, const double * min_bounds, const double * max_bounds
 double cell_volume(const Cell * cell){
     double v = 0;
     double tmp;
-    for(int c = 0; c < 3; c++){
+    for(int c = 0; c < 2; c++){
        /* coordinate side length */
        tmp = (cell->max_bounds[c] - cell->min_bounds[c]);
        if(v == 0){
@@ -436,12 +464,12 @@ double cell_volume(const Cell * cell){
             v *= tmp;
        }
     }
-    return v;
+    return tmp;
 }
 
 
 bool bounds_in_cell(Cell * cell, const double * min_bounds, const double * max_bounds){
-    for(int c = 0; c < 3; c++){
+    for(int c = 0; c < 2; c++){
         /* if coordinate boundary does not fit in cell*/
         if(cell->min_bounds[c] > min_bounds[c] or cell->max_bounds[c] < max_bounds[c]){
             return false;

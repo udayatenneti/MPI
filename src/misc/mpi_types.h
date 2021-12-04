@@ -8,10 +8,10 @@ extern MPI_Datatype mpi_body_type;
 extern MPI_Datatype mpi_cell_type;
 
 struct MPICell{
-    double min_bounds[3];
-    double max_bounds[3];
+    double min_bounds[2];
+    double max_bounds[2];
     double m;   // mass 
-    double rm[3]; // center of mass
+    double rm[2]; // center of mass
     int parent_idx;
 };
 
