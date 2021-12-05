@@ -184,31 +184,11 @@ int main(int argc, char * argv[]){
                 stop_time = MPI_Wtime(); 
             }
 
-            /* Write tree */
-            if(rank == 0 and ip.write_tree()){
-                write_tree(ip.out_tree_file().c_str(), tree, true, overwrite);
-            }
-            
-            /* Write tree size*/
-            if(rank == 0 and ip.write_tree_size()){
-                write_to_file(ip.out_tree_size_file().c_str(), tree.size(), overwrite);
-            }
-
-            /* Write positions */
-            if(ip.write_positions()){
-                //write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, false);
-            }
-
             /* Write running time */
             if(ip.clock_run()){
                 if(rank == 0){
                     write_to_file(ip.out_time_file().c_str(), stop_time - start_time, overwrite);
                 }
-                
-            }
-
-            if(overwrite){
-                overwrite = false;
             }
 
             if(ip.clock_run()){
@@ -224,10 +204,5 @@ int main(int argc, char * argv[]){
     free_mpi_types();
     MPI_Finalize();
    
-    if(ip.write_summary()){
-        if(rank == 0){
-            write_summary(ip, N, size);
-        }
-    }
 }
 
