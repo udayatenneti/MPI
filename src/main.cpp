@@ -151,12 +151,14 @@ int main(int argc, char * argv[]){
         /* Update positions */
         for (int i = 0; i < bodies.size(); i++) {
             Body & b = bodies[i];
-            for(int c = 0; c < 2; c++){
-                double a = forces[i][c] / b.m;
-                b.pos[c] = b.pos[c] + b.vel[c] * dt + 0.5 * a * pow(dt, 2);
-                b.vel[c] = b.vel[c] + a * dt;
-                if (b.pos[c] < 0 || b.pos[c] > 4){
-                    b.m = -1;
+            if (b.m != -1){
+                for(int c = 0; c < 2; c++){
+                    double a = forces[i][c] / b.m;
+                    b.pos[c] = b.pos[c] + b.vel[c] * dt + 0.5 * a * pow(dt, 2);
+                    b.vel[c] = b.vel[c] + a * dt;
+                    if (b.pos[c] < 0 || b.pos[c] > 4){
+                        b.m = -1;
+                    }
                 }
             }
         }
@@ -180,12 +182,12 @@ int main(int argc, char * argv[]){
             displacements[i] = displacement;
             displacement += this_size;
         }
-        if (rank==0){
+        /*if (rank==0){
             std::cout << "\rsize: " << N << std::endl;
             for (int i=0; i < size; i++){
                 std::cout << "\rcounts: " << counts[i] << " displacements: " << displacements[i] << std::endl; 
             }
-        }
+        }*/
         MPI_Barrier(MPI_COMM_WORLD);
         allBodies.clear();
         allBodies.resize(N);

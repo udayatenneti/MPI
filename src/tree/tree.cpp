@@ -344,7 +344,7 @@ bool Tree::mac(const Cell * cell, const double * pos){
 
     /* squared volume of cell */
     //double v2 = pow(cell_volume(cell),0.333*2);
-    double l = (double) (cell->max_bounds[0] - cell->max_bounds[1]);
+    double l = (double) (cell->max_bounds[0] - cell->min_bounds[0]);
     /* opening criterion rule */
     if( (l / d) < m_theta){
         return true; //divide into subcells
@@ -359,7 +359,10 @@ array<double, 2> Tree::compute_force(const Body * b){
 }
 
 array<double, 2> Tree::compute_force(const Cell * cell, const Body * b){
-
+    if (b->m == -1){
+        array<double, 2> ftot = {{0, 0}};
+        return ftot;
+    }
     /* if cell is non empty and we dont want to open it or it is leaf cell */
     if((cell->m > 0) and (cell->subcells[0] == nullptr) and (cell->b != nullptr)){
         if(cell->b->idx != b->idx){
@@ -370,8 +373,9 @@ array<double, 2> Tree::compute_force(const Cell * cell, const Body * b){
         else{
             return {{0, 0}}; //same as
         }
-    } else if((cell->m > 0) and (cell->b != nullptr) and (cell->subcells[0] != nullptr) and !mac(cell, b->pos)){
+    } else if((cell->m > 0) and (cell->b == nullptr) and (cell->subcells[0] != nullptr) and mac(cell, b->pos)){
         //force is calculated using
+        std::cout << "\rDO I HIT??!!!" << std::endl;
         return eval_force_simple(cell->rm, cell->m, b->pos, b->m);
     }
 

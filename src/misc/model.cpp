@@ -26,7 +26,7 @@ array<double, 2> eval_force(const double * r1, double m1, const double * r2, dou
 array<double, 2> eval_force_simple(const double * cell_rm, double cell_m, const double * body_pos, double body_m){
     
     double RLIMIT = 0.03;
-    double M = cell_m * body_m;
+    //double M = cell_m * body_m;
     array<double, 2> f;
     
     double dist = dist_rm(cell_rm, body_pos);
@@ -41,7 +41,7 @@ array<double, 2> eval_force_simple(const double * cell_rm, double cell_m, const 
     }
 
 
-    f[0] = 0.0001 * M * dx / pow(dist, 3.0);
-    f[1] = 0.0001 * M * dy / pow(dist, 3.0);
+    f[0] = 0.0001 * cell_m * body_m * dx / pow(dist, 3.0);
+    f[1] = 0.0001 * cell_m * body_m * dy / pow(dist, 3.0);
     return f;
 }

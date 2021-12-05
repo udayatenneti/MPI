@@ -19,6 +19,8 @@ void build_simple_tree(const vector<Body > & bodies, Tree & tree, int rank){
     for(const Body & b : bodies){
         if (b.m != -1){
             tree.insert_body(&b);
+        } else {
+            std::cout << "\rRank: " << rank << " skipped body: "<< b.idx << "/" << std::endl;
         }
     }               
 }
