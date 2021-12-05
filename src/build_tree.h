@@ -7,9 +7,9 @@
 #include <utility>
 #include <array>
 
-#include "../misc/body.h"
+#include "body.h"
 #include "tree.h"
-#include "../misc/mpi_types.h"
+#include "mpi_types.h"
 
 using std::vector; using std::array;
 using std::pair;

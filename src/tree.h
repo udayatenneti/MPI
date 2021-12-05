@@ -5,7 +5,7 @@
 #include <vector>
 #include <array>
 
-#include "../misc/body.h"
+#include "body.h"
 
 using std::vector; using std::array;
 

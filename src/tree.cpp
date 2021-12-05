@@ -6,8 +6,8 @@
 #include <algorithm>
 #include <math.h>
 
-#include "../misc/utils.h"
-#include "../misc/model.h"
+#include "utils.h"
+#include "model.h"
 
 using std::cout; using std::endl;
 using std::stringstream; using std::string;
@@ -375,7 +375,6 @@ array<double, 2> Tree::compute_force(const Cell * cell, const Body * b){
         }
     } else if((cell->m > 0) and (cell->b == nullptr) and (cell->subcells[0] != nullptr) and mac(cell, b->pos)){
         //force is calculated using
-        std::cout << "\rDO I HIT??!!!" << std::endl;
         return eval_force_simple(cell->rm, cell->m, b->pos, b->m);
     }
 

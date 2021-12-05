@@ -4,7 +4,7 @@
 
 #include <functional>
 
-double secant(double a, double b, std::function<double (double)> f, double tol=1e-10, int max_iter=200);
+
 
 double bisection(double a, double b, std::function<double (double)> f, double tol=1e-10, int max_iter=200);
 

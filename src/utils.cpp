@@ -4,24 +4,6 @@
 #include <iostream>
 using std::cout; using std::endl;
 
-double secant(double a, double b, std::function<double (double)> f, double tol, int max_iter){
-
-    double x, y, fa, fb;
-    int n_iter;
-
-    n_iter = 0;
-    fa = f(a); fb = f(b);
-
-    while(fabs(b-a) > tol && fa != fb && n_iter < max_iter){
-        x = a - (b - a) * fa / (fb - fa);
-        y = f(x);
-        b = a; a = x;
-        fb = fa; fa = y;
-        n_iter++;
-    }
-    return a;
-}
-
 
 double bisection(double a, double b, std::function<double (double)> f, double tol, int max_iter){
 

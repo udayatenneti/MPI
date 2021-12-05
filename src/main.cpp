@@ -15,34 +15,30 @@
 #include <mpi.h>
 
 /* Custom MPI structs */
-#include "misc/mpi_types.h"
+#include "mpi_types.h"
 
 /* Body class */
-#include "misc/body.h"
+#include "body.h"
 
 /* Reading and writing */
-#include "misc/readwrite.h"
+#include "readwrite.h"
 
 /* Tree building */
-#include "tree/orb.h"
-#include "tree/tree.h"
-#include "tree/build_tree.h"
+#include "tree.h"
+#include "build_tree.h"
 
 /* Input parsing */
-#include "misc/inputparser.h"
+#include "inputparser.h"
 
 /* Body generator */
-#include "misc/gen_bodies.h"
 
 
 int main(int argc, char * argv[]){
     
-    int size, rank, tmax, N, nbodies;
+    int size, rank, tmax, N;
     std::vector<Body> bodies;
     std::vector<Body> allBodies;
     std::vector<pair<double, int> > splits;
-    vector<pair<array<double, 2>, array<double, 2> > > bounds, other_bounds; 
-    vector<pair<int, bool> > partners;
     vector<double> comp_time;
     double dt, min[2], max[2];
     double start_time, stop_time;
@@ -53,16 +49,6 @@ int main(int argc, char * argv[]){
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    /* Number of processes must be a power of 2 */
-    /*if(fmod(log2(size), 1) != 0){
-        if(rank == 0){
-            std::cerr << "Error: Number of processes must be a power of 2!" << std::endl;
-        }
-        MPI_Finalize();
-        return -1;
-    }*/
-
 
     if(!ip.parse(argc, argv)){
         if(rank == 0){
@@ -75,25 +61,12 @@ int main(int argc, char * argv[]){
     /* Initialize custom MPI structures */
     init_mpi_types();
 
-    if(ip.read_bodies()){
-        /* Read bodies from file */
-        auto p = read_bodies(ip.in_file().c_str(), MPI_COMM_WORLD);
-        bodies = p.first;
-        allBodies = p.second.first;
-        N = p.second.second;
-        std::cout << "\rRank: " << rank << " my bodies: "<< bodies.size() << " all bodies: "<< allBodies.size() <<  "/" << std::endl;
-    }
-    else{
-        N = ip.n_bodies();
-        nbodies = ip.n_bodies() / size;
-        std::cout << "\rRank: " << rank << " nbodies: "<< nbodies << "/" << std::endl;
-        if (rank <= ip.n_bodies() % size - 1){
-            nbodies++;
-        }
-        std::cout << "\rAfter Rank: " << rank << " nbodies: "<< nbodies << "/" << std::endl;
-        double lim = (double) 10 * N;
-        bodies = generate_bodies(nbodies, {{-lim, -lim}}, {{lim, lim}}, rank);
-    }
+    /* Read bodies from file */
+    auto p = read_bodies(ip.in_file().c_str(), MPI_COMM_WORLD);
+    bodies = p.first;
+    allBodies = p.second.first;
+    N = p.second.second;
+    std::cout << "\rRank: " << rank << " my bodies: "<< bodies.size() << " all bodies: "<< allBodies.size() <<  "/" << std::endl;
 
     /* Write initial positions to file */
     overwrite = true;
@@ -111,14 +84,13 @@ int main(int argc, char * argv[]){
     }
 
     for(int t = 0; t < tmax; t++){
-
-        /* Reset variables */
-        bounds.clear();
-        other_bounds.clear();
-        partners.clear();
         
         /* Domain composition and transfer of bodies */
-        global_minmax(bodies, min, max);
+        for(int c = 0; c < 2; c++){
+            min[c] = 0;
+            max[c] = 4;
+        }
+        //global_minmax(bodies, min, max);
         //orb(bodies, bounds, other_bounds, partners, min, max, rank, size);
 
         /*for(int i = 0; i < bounds.size(); i++){
@@ -142,14 +114,14 @@ int main(int argc, char * argv[]){
             double start_time = MPI_Wtime();
             
             array<double, 2> f = tree.compute_force(&b);
-            
+
             /* update the workload for the body */
             b.work = MPI_Wtime() - start_time;
             forces.push_back(f);
         }
         
         /* Update positions */
-        for (int i = 0; i < bodies.size(); i++) {
+        for (unsigned int i = 0; i < bodies.size(); i++) {
             Body & b = bodies[i];
             if (b.m != -1){
                 for(int c = 0; c < 2; c++){
@@ -216,7 +188,8 @@ int main(int argc, char * argv[]){
 
 
         if(ip.sampling_interval() == 1 or (t % ip.sampling_interval() == 0 and t != 0)){
-            
+            stop_time = 0;
+            start_time = 0;
             /* Stop the time */
             if(ip.clock_run()){
                 MPI_Barrier(MPI_COMM_WORLD);
@@ -235,7 +208,7 @@ int main(int argc, char * argv[]){
 
             /* Write positions */
             if(ip.write_positions()){
-                write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, false);
+                //write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, false);
             }
 
             /* Write running time */

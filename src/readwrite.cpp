@@ -39,7 +39,7 @@ std::pair<std::vector<Body>, std::pair<std::vector<Body>, int>> read_bodies(cons
     int total;
     while (std::getline(infile, line)){
         std::istringstream iss(line);
-        double x, y, z, vx, vy, vz, m;
+        double x, y, vx, vy, m;
         
         int num;
         if(i==-1){

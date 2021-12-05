@@ -5,7 +5,7 @@
 #include <mpi.h>
 #include <vector>
 
-#include "../tree/tree.h"
+#include "tree.h"
 #include "body.h"
 #include "inputparser.h"
 
