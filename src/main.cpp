@@ -70,9 +70,6 @@ int main(int argc, char * argv[]){
 
     /* Write initial positions to file */
     overwrite = true;
-    if(ip.write_positions()){
-        write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, overwrite);
-    }
 
     
     tmax = ip.n_steps(); // number of time steps
@@ -90,15 +87,6 @@ int main(int argc, char * argv[]){
             min[c] = 0;
             max[c] = 4;
         }
-        //global_minmax(bodies, min, max);
-        //orb(bodies, bounds, other_bounds, partners, min, max, rank, size);
-
-        /*for(int i = 0; i < bounds.size(); i++){
-            std::cout << "\rmin Rank: " << rank << " iteration:" << i << " " << bounds.at(i).first[0] << " " << bounds.at(i).first[1] \
-                               <<"/" << std::endl;
-            std::cout << "\rmax Rank: " << rank << " iteration:" << i << " " << bounds.at(i).second[0] << " " << bounds.at(i).second[1] \
-                                <<"/" << std::endl;
-        }*/
 
         /* Build the local tree */
         //Tree tree(min, max, ip.bh_approx_constant());
@@ -179,7 +167,7 @@ int main(int argc, char * argv[]){
         /* Output */
         /* Print time step to stdout */
         if(rank == 0 and ip.verbose()){
-            std::cout << "\rTime step: " << t + 1 << "/" << tmax << std::endl;
+            std::cout << "\rTime step: " << t + 1 << "/" << tmax;
             if(t == tmax - 1){
                 std::cout << std::endl;
             }
@@ -231,7 +219,7 @@ int main(int argc, char * argv[]){
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }
-    write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, false);
+    write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, true);
     /* Finalize */
     free_mpi_types();
     MPI_Finalize();
