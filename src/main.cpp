@@ -43,7 +43,6 @@ int main(int argc, char * argv[]){
     double dt, min[2], max[2];
     double start_time, stop_time;
     InputParser ip;
-    bool overwrite;
     
     /* Initialize MPI */
     MPI_Init(&argc, &argv);
@@ -69,16 +68,13 @@ int main(int argc, char * argv[]){
     std::cout << "\rRank: " << rank << " my bodies: "<< bodies.size() << " all bodies: "<< allBodies.size() <<  "/" << std::endl;
 
     /* Write initial positions to file */
-    overwrite = true;
 
     
     tmax = ip.n_steps(); // number of time steps
     dt = ip.time_step(); // time step
-    
-    if(ip.clock_run()){
-        MPI_Barrier(MPI_COMM_WORLD);
-        start_time = MPI_Wtime();
-    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    start_time = MPI_Wtime();
 
     for(int t = 0; t < tmax; t++){
         
@@ -142,18 +138,12 @@ int main(int argc, char * argv[]){
             displacements[i] = displacement;
             displacement += this_size;
         }
-        /*if (rank==0){
-            std::cout << "\rsize: " << N << std::endl;
-            for (int i=0; i < size; i++){
-                std::cout << "\rcounts: " << counts[i] << " displacements: " << displacements[i] << std::endl; 
-            }
-        }*/
-        MPI_Barrier(MPI_COMM_WORLD);
+
         allBodies.clear();
         allBodies.resize(N);
-        
-        MPI_Allgatherv(&bodies.front(), bodies.size(), mpi_body_type, &allBodies.front(), counts, displacements, mpi_body_type, MPI_COMM_WORLD);
         MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Allgatherv(&bodies.front(), bodies.size(), mpi_body_type, &allBodies.front(), counts, displacements, mpi_body_type, MPI_COMM_WORLD);
+        
         //MPI_Allgatherv(my_values, my_values_count, MPI_INT, buffer, counts, displacements, MPI_INT, MPI_COMM_WORLD);
         
         /*if (rank==0){
@@ -162,42 +152,19 @@ int main(int argc, char * argv[]){
                 std::cout << "\r idx: " << b.idx << std::endl;
             }
         }*/
-
-        MPI_Barrier(MPI_COMM_WORLD);
         /* Output */
         /* Print time step to stdout */
-        if(rank == 0 and ip.verbose()){
+        if(rank == 0){
             std::cout << "\rTime step: " << t + 1 << "/" << tmax;
             if(t == tmax - 1){
                 std::cout << std::endl;
             }
         }
-
-
-
-        if(ip.sampling_interval() == 1 or (t % ip.sampling_interval() == 0 and t != 0)){
-            stop_time = 0;
-            start_time = 0;
-            /* Stop the time */
-            if(ip.clock_run()){
-                MPI_Barrier(MPI_COMM_WORLD);
-                stop_time = MPI_Wtime(); 
-            }
-
-            /* Write running time */
-            if(ip.clock_run()){
-                if(rank == 0){
-                    write_to_file(ip.out_time_file().c_str(), stop_time - start_time, overwrite);
-                }
-            }
-
-            if(ip.clock_run()){
-                // start the time
-                MPI_Barrier(MPI_COMM_WORLD);
-                start_time = MPI_Wtime();        
-            }
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    stop_time = MPI_Wtime();
+    if(rank == 0){
+        std::cout << "\rTime took: " << stop_time - start_time << "/" << std::endl;
     }
     write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, true);
     /* Finalize */
