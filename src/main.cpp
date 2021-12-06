@@ -65,7 +65,7 @@ int main(int argc, char * argv[]){
     bodies = p.first;
     allBodies = p.second.first;
     N = p.second.second;
-    std::cout << "\rRank: " << rank << " my bodies: "<< bodies.size() << " all bodies: "<< allBodies.size() <<  "/" << std::endl;
+    //std::cout << "\rRank: " << rank << " my bodies: "<< bodies.size() << " all bodies: "<< allBodies.size() <<  "/" << std::endl;
 
     /* Write initial positions to file */
 
@@ -146,25 +146,17 @@ int main(int argc, char * argv[]){
         
         //MPI_Allgatherv(my_values, my_values_count, MPI_INT, buffer, counts, displacements, MPI_INT, MPI_COMM_WORLD);
         
-        /*if (rank==0){
-            for (int i = 0; i < allBodies.size(); i++){
-                Body & b = allBodies[i];
-                std::cout << "\r idx: " << b.idx << std::endl;
-            }
-        }*/
-        /* Output */
-        /* Print time step to stdout */
-        if(rank == 0){
+        /*if(rank == 0){
             std::cout << "\rTime step: " << t + 1 << "/" << tmax;
             if(t == tmax - 1){
                 std::cout << std::endl;
             }
-        }
+        }*/
     }
     MPI_Barrier(MPI_COMM_WORLD);
     stop_time = MPI_Wtime();
     if(rank == 0){
-        std::cout << "\rTime took: " << stop_time - start_time << "/" << std::endl;
+        std::cout << "\r" << stop_time - start_time << std::endl;
     }
     write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, true);
     /* Finalize */
