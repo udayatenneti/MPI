@@ -153,12 +153,14 @@ int main(int argc, char * argv[]){
             }
         }*/
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    
     stop_time = MPI_Wtime();
     if(rank == 0){
         std::cout << "\r" << stop_time - start_time << std::endl;
+        write_to_file(ip.out_file().c_str(), N,true);
     }
-    write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, true);
+    MPI_Barrier(MPI_COMM_WORLD);
+    write_bodies(ip.out_file().c_str(), bodies, MPI_COMM_WORLD, false);
     /* Finalize */
     free_mpi_types();
     MPI_Finalize();
